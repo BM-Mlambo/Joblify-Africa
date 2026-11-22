@@ -29,3 +29,24 @@ model Job {
   @@index([location])
   @@index([createdAt])
 }
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  @@index([createdAt])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}

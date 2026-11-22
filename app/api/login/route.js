@@ -1,53 +1,72 @@
 import { PrismaClient } from "@prisma/client";
-//Creating an instance of the prisma
-const prisma=new PrismaClient();
-//Bcrypt used to hash password we never store them as plain text
-import bcrypt from "bcrypt"
-export async function POST(req){
-    try{
-        const body=await req.json()
-        const{email, password}=body
-        //Checks if the user exist in the data base
-        const existingUser=await prisma.user.findUnique({
-            where:{email}
-        })
-        //if the user does not exist 
-        if(!existingUser){
-            return Response.json(
-                {message:"User not found"},
-                {status:404}//404=not found
-            )
+import bcrypt from "bcrypt";
+import { NextResponse } from "next/server";
+import { signToken } from "@/lib/auth";
 
-        }
-        //compare the entered password with the hashed password in the db
-        const isPasswordcorrect=await bcrypt.compare(
-            password,
-            existingUser.password
-        )
-        //if password is wrong 
-        if(!isPasswordcorrect){
-            return Response.json(
-                {message:"invalid credentials"},
-                {status:401}//401=unauthorized
-            )
-        }
-        //Login succcessfull
-        return Response.json(
-        {
-            message:"login successfull",
-            user:existingUser
-        },
-        {status:200}
-        )
+const globalForPrisma = globalThis;
+const prisma = globalForPrisma.prisma || new PrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export async function POST(req) {
+  try {
+    const body = await req.json();
+    const { email, password } = body;
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { message: "Email and password are required." },
+        { status: 400 }
+      );
     }
-     catch(error){
-        console.log(error)
-        //if anything goes wrong(db down,unexpected error)log it and return 500
-        return Response.json(
-            {message:"something went wrong"},
-            {status:500} //500=internal server error
-        )
-        
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { message: "User not found" },
+        { status: 404 }
+      );
     }
+
+    const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
+
+    if (!isPasswordCorrect) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
+
+    // Strip password before it ever leaves the server
+    const { password: _omit, ...safeUser } = existingUser;
+
+    const token = signToken({ userId: safeUser.id, email: safeUser.email });
+
+    const response = NextResponse.json(
+      {
+        message: "Login successful",
+        user: safeUser,
+      },
+      { status: 200 }
+    );
+
+    // httpOnly cookie — not readable by client-side JS, sent automatically on every request
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days, matches token expiry
+      path: "/",
+    });
+
+    return response;
+  } catch (error) {
+    console.log(error);
+    return NextResponse.json(
+      { message: "Something went wrong" },
+      { status: 500 }
+    );
+  }
 }
-    

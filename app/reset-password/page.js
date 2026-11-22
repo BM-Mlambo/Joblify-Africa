@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import {FaEye,FaEyeSlash} from "react-icons/fa"
 export default function ResetPassword(){
     const router=useRouter()
-    const[password,setpassword]=userState("")
+    const[password,setpassword]=useState("")
     const[confirmPassword,setConfirmPassword]=useState("")
     const[showPassword,setShowPassword]=useState(false)
     const[loading,setLoading]=useState(false)

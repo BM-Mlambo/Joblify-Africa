@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 const CATEGORIES = ["", "Annotation", "Translation", "Web Dev", "Transcription", "Design", "Other"];
 const TYPES = ["", "Full-time", "Part-time", "Contract", "Gig"];
 
-export default function FindJobsPage() {
+function FindJobsInner() {
+  const urlParams = useSearchParams();
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [type, setType] = useState("");
+  const [search, setSearch] = useState(urlParams.get("search") || "");
+  const [category, setCategory] = useState(urlParams.get("category") || "");
+  const [type, setType] = useState(urlParams.get("type") || "");
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -123,5 +126,13 @@ export default function FindJobsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function FindJobsPage() {
+  return (
+    <Suspense fallback={<div className="bg-surface min-h-screen" />}>
+      <FindJobsInner />
+    </Suspense>
   );
 }
